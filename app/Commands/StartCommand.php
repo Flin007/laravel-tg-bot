@@ -14,7 +14,7 @@ class StartCommand extends Command
     public function handle()
     {
         $userData = $this->getUpdate()->message->from;
-        $user = $userData instanceof User ? $this->updateOrCreateTelegramUser($userData) : null;
+        $user = $userData instanceof User ? $this->firstOrCreateTelegramUser($userData) : null;
 
         if ($user){
             $this->replyWithMessage([
@@ -35,9 +35,9 @@ class StartCommand extends Command
         }
     }
 
-    public function updateOrCreateTelegramUser(User $userData)
+    public function firstOrCreateTelegramUser(User $userData)
     {
-        return TelegramUser::updateOrCreate([
+        return TelegramUser::firstOrCreate([
            'user_id' => $userData->id,
         ],[
             'username' => $userData->username,
