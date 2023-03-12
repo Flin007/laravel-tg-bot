@@ -3,6 +3,7 @@
 namespace App\Commands;
 
 use App\Models\TelegramUser;
+use Telegram\Bot\Actions;
 use Telegram\Bot\Commands\Command;
 use Telegram\Bot\Objects\User;
 
@@ -13,6 +14,11 @@ class StartCommand extends Command
 
     public function handle()
     {
+        //Добавляет экшн, набирание текста у бота
+        $this->replyWithChatAction([
+           'action' => Actions::TYPING,
+        ]);
+
         $userData = $this->getUpdate()->message->from;
         $user = $userData instanceof User ? $this->firstOrCreateTelegramUser($userData) : null;
 
