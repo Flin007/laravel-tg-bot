@@ -42,10 +42,10 @@ return [
             ],
         ],
 
-        //        'mySecondBot' => [
-        //            'username'  => 'AnotherTelegram_Bot',
-        //            'token' => '123456:abc',
-        //        ],
+        'ErrorsBot' => [
+            'username'  => 'ErrorsBot',
+            'token' => env('ERRORS_BOT_TOKEN', 'YOUR-BOT-TOKEN'),
+        ],
     ],
 
     /*
