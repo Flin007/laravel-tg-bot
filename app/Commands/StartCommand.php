@@ -18,8 +18,7 @@ class StartCommand extends Command
         $user = $userData instanceof User ? $this->firstOrCreateTelegramUser($userData) : null;
 
         //Remove another Keyboards
-        $reply_markup = Keyboard::remove(); //Deleted keyboard
-        // Reply with the commands list
+        $reply_markup = Keyboard::remove();
         $this->replyWithMessage([
             'text' => 'Welcome!',
             'reply_markup' => $reply_markup,
