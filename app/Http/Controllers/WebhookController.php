@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Commands\StartCommand;
 use App\Models\TelegramUser;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
@@ -17,12 +16,10 @@ class WebhookController extends Controller
 {
     public function __construct(
         BotsManager $botsManager,
-        Client $httpClient,
-        StartCommand $startCommand
+        Client $httpClient
     ) {
         $this->botsManager = $botsManager;
         $this->httpClient = $httpClient;
-        $this->startCommand = $startCommand;
     }
 
     /**
