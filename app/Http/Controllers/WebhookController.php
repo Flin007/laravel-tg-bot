@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Telegram\Bot\BotsManager;
+use Telegram\Bot\Keyboard\Keyboard;
 use Telegram\Bot\Objects\CallbackQuery;
 use Telegram\Bot\Objects\Message;
 use Telegram\Bot\Objects\Update;
@@ -150,10 +151,12 @@ class WebhookController extends Controller
         $weatherInfo .= PHP_EOL . 'Восход: ' . Carbon::parse($data->sys->sunrise+$data->timezone)->toTimeString();
         $weatherInfo .= PHP_EOL . 'Закат: ' . Carbon::parse($data->sys->sunset+$data->timezone)->toTimeString();
 
+        $reply_markup = Keyboard::remove();
         $bot = $this->botsManager->bot();
         $bot->sendMessage([
             'chat_id' => $chat->id,
             'text' => $weatherInfo,
+            'reply_markup' => $reply_markup,
         ]);
     }
 
