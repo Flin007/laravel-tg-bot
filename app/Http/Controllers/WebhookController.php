@@ -54,7 +54,7 @@ class WebhookController extends Controller
 
     private function checkMemberStatus($webhook)
     {
-        if ($webhook->my_chat_member->new_chat_member->status) {
+        if ($webhook->my_chat_member) {
             $userId = $webhook->my_chat_member->chat->id;
             $telegramUser = TelegramUser::where('user_id', $userId)->first();
             if ($telegramUser){
