@@ -17,6 +17,15 @@ class StartCommand extends Command
         $userData = $this->getUpdate()->message->from;
         $user = $userData instanceof User ? $this->firstOrCreateTelegramUser($userData) : null;
 
+        //Remove another Keyboards
+        $reply_markup = Keyboard::remove(); //Deleted keyboard
+        // Reply with the commands list
+        $this->replyWithMessage([
+            'text' => 'Welcome!',
+            'reply_markup' => $reply_markup,
+        ]);
+
+        //Main answer
         $reply_markup = Keyboard::make([
             'inline_keyboard' => [
                 [
@@ -33,8 +42,8 @@ class StartCommand extends Command
             'resize_keyboard' => true,
         ]);
 
-        $welcomeText = 'Hi! First, choose your default language.';
-        $welcomeText .= PHP_EOL . 'Привет. Выбери язык для начала.';
+        $welcomeText = 'First, select an available language.';
+        $welcomeText .= PHP_EOL . 'Для начала выбери доступный язык.';
 
         $this->replyWithMessage([
             'text' => $welcomeText,
@@ -62,6 +71,10 @@ class StartCommand extends Command
           'ru' => '🇷🇺Русский язык установлен по умолчанию.',
           'en' => '🇬🇧English language is set by default.'
         ];
+        $weatherText = [
+            'ru' => 'Показать погоду в твоем регионе?',
+            'en' => '🇬🇧English language is set by default.'
+        ];
 
         if (isset($response[$value])){
             //Update selected_language in DB for user
@@ -71,12 +84,25 @@ class StartCommand extends Command
             ]);
             $telegramUser->save();
 
+            $reply_markup = Keyboard::make([
+                'inline_keyboard' => [
+                    [
+                        [
+                            'text' => $weatherText[$value],
+                            'callback_data' => '/weather',
+                        ],
+                    ],
+                ],
+                'resize_keyboard' => true,
+            ]);
+
             //Send response with change message
             $bot = $botsManager->bot();
             $bot->editMessageText([
                 'chat_id'                  => $userId,
                 'message_id'               => $messageId,
                 'text'                     => $response[$value],
+                'reply_markup'             => $reply_markup
             ]);
         }else{
             $response = 'StartCommand:setLanguage - Передан неверный язык';
