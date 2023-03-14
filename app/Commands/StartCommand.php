@@ -56,7 +56,7 @@ class StartCommand extends Command
         ]);
     }
 
-    public function setLanguage(int $chatId, int $messageId, string $value, $botsManager): void
+    public function setLanguage(int $userId, int $messageId, string $value, $botsManager): void
     {
         $response = [
           'ru' => '🇷🇺Русский язык установлен по умолчанию.',
@@ -64,15 +64,23 @@ class StartCommand extends Command
         ];
 
         if (isset($response[$value])){
+            //Update selected_language in DB for user
+            $telegramUser = TelegramUser::where('user_id', $userId)->first();
+            $telegramUser->update([
+                'selected_language' =>  $value,
+            ]);
+            $telegramUser->save();
+
+            //Send response with change message
             $bot = $botsManager->bot();
             $bot->editMessageText([
-                'chat_id'                  => $chatId,
+                'chat_id'                  => $userId,
                 'message_id'               => $messageId,
                 'text'                     => $response[$value],
             ]);
         }else{
             $response = 'StartCommand:setLanguage - Передан неверный язык';
-            $response .= PHP_EOL . '$chatId = ' . $chatId;
+            $response .= PHP_EOL . '$userId = ' . $userId;
             $response .= PHP_EOL . '$messageId = ' . $messageId;
             $response .= PHP_EOL . '$value = ' . $value;
             $bot = $botsManager->bot('ErrorsBot');

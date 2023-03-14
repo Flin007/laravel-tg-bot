@@ -88,7 +88,7 @@ class WebhookController extends Controller
      */
     private function processCallback(Update $webhook): void
     {
-        $chatId = $webhook->getChat()->id;
+        $userId = $webhook->getChat()->id;
         $messageId = $webhook->getMessage()->messageId;
         //Разделяем строку ответа на массив по разделителю '_'
         //[0] -> Command name
@@ -101,7 +101,7 @@ class WebhookController extends Controller
             $class = new $className;
             $method = $callbackData[1];
             $value = $callbackData[2];
-            $class->$method($chatId, $messageId, $value, $this->botsManager);
+            $class->$method($userId, $messageId, $value, $this->botsManager);
         }else{
             $this->SendErrorMessageToChannel('Пытались обработать callback, но пришли неверные параметры', $webhook);
         }
