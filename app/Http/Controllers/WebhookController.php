@@ -87,20 +87,28 @@ class WebhookController extends Controller
     {
         $userId = $webhook->getChat()->id;
         $messageId = $webhook->getMessage()->messageId;
-        //Разделяем строку ответа на массив по разделителю '_'
-        //[0] -> Command name
-        //[1] -> Command method
-        //[2] -> Value for method
-        $callbackData = explode('_', $webhook->callbackQuery->data);
 
-        if (count($callbackData) === 3) {
-            $className = "App\Commands\\".$callbackData[0]."Command";
-            $class = new $className;
-            $method = $callbackData[1];
-            $value = $callbackData[2];
-            $class->$method($userId, $messageId, $value, $this->botsManager);
+        //If we found '/' - call the command, or trying parse
+        if (false !== strpos($webhook->callbackQuery->data, '/')){
+            $command = ltrim($webhook->callbackQuery->data, '/');
+            $update = \Telegram\Bot\Laravel\Facades\Telegram::commandsHandler(true);
+            \Telegram\Bot\Laravel\Facades\Telegram::triggerCommand($command, $update);
         }else{
-            $this->SendErrorMessageToChannel('Пытались обработать callback, но пришли неверные параметры', $webhook);
+            //Разделяем строку ответа на массив по разделителю '_'
+            //[0] -> Command name
+            //[1] -> Command method
+            //[2] -> Value for method
+            $callbackData = explode('_', $webhook->callbackQuery->data);
+
+            if (count($callbackData) === 3) {
+                $className = "App\Commands\\".$callbackData[0]."Command";
+                $class = new $className;
+                $method = $callbackData[1];
+                $value = $callbackData[2];
+                $class->$method($userId, $messageId, $value, $this->botsManager);
+            }else{
+                $this->SendErrorMessageToChannel('Пытались обработать callback, но пришли неверные параметры', $webhook);
+            }
         }
     }
 
