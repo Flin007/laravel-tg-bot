@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\TelegramUser;
+use App\Models\User;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -28,21 +30,49 @@ class WebhookController extends Controller
         $webhook = $this->botsManager->bot()->commandsHandler(true);
         $message = $webhook->getMessage();
 
+        //Проверяем статус, мб юзер вышел из бота или заблокировал
+        $this->checkMemberStatus($webhook);
+
         $bot = $this->botsManager->bot();
 
-        if ($message->isType('location')){
-            $location = $message->location;
-            $chat = $message->chat;
+        if ($message ){
+            if ($message->isType('location')){
+                $location = $message->location;
+                $chat = $message->chat;
 
-            $weatherInfo = $this->weatherInformation($location->latitude, $location->longitude);
+                $weatherInfo = $this->weatherInformation($location->latitude, $location->longitude);
 
-            $bot->sendMessage([
-                'chat_id' => $chat->id,
-                'text' => $weatherInfo,
-            ]);
+                $bot->sendMessage([
+                    'chat_id' => $chat->id,
+                    'text' => $weatherInfo,
+                ]);
+            }
         }
 
         return response(null, 200);
+    }
+
+    private function checkMemberStatus($webhook)
+    {
+        if ($webhook->my_chat_member->new_chat_member->status) {
+            $userId = $webhook->my_chat_member->chat->id;
+            $telegramUser = TelegramUser::where('user_id', $userId)->first();
+            if ($telegramUser){
+                $telegramUser->update([
+                   'status' =>  $webhook->my_chat_member->new_chat_member->status,
+                ]);
+                $telegramUser->save();
+            }else{
+                //Отправка ошибки в группу ошибок через бота ErrorsBot
+                $bot = $this->botsManager->bot('ErrorsBot');
+                $response = 'Изменился статус юзера, но его нет в базе';
+                $response .= PHP_EOL . json_encode($webhook);
+                $bot->sendMessage([
+                    'chat_id' => env('ERRORS_CHAT_ID'),
+                    'text' => $response,
+                ]);
+            }
+        }
     }
 
     private function weatherInformation($latitude, $longitude): string
