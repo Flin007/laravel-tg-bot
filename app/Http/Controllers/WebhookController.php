@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\TelegramUser;
-use App\Models\User;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Telegram\Bot\BotsManager;
+use Telegram\Bot\Objects\Message;
+use Telegram\Bot\Objects\Update;
 
 class WebhookController extends Controller
 {
@@ -22,10 +24,10 @@ class WebhookController extends Controller
     /**
      * Handle the incoming request.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\Response
      */
-    public function __invoke(Request $request)
+    public function __invoke(Request $request): Response
     {
         $webhook = $this->botsManager->bot()->commandsHandler(true);
         $message = $webhook->getMessage();
@@ -33,26 +35,23 @@ class WebhookController extends Controller
         //Проверяем статус, мб юзер вышел из бота или заблокировал
         $this->checkMemberStatus($webhook);
 
-        $bot = $this->botsManager->bot();
-
-        if ($message ){
-            if ($message->isType('location')){
-                $location = $message->location;
-                $chat = $message->chat;
-
-                $weatherInfo = $this->weatherInformation($location->latitude, $location->longitude);
-
-                $bot->sendMessage([
-                    'chat_id' => $chat->id,
-                    'text' => $weatherInfo,
-                ]);
-            }
+        //Обрабатываем сообщение, неизвестный инстанс в ошибки
+        if ($message instanceof Message){
+            $this->processMessage($message);
+        }else{
+            $this->SendErrorMessageToChannel('Неизвестный $message instanceof', $webhook);
         }
 
         return response(null, 200);
     }
 
-    private function checkMemberStatus($webhook)
+    /**
+     * Проверяем не изменился ли статус пользователя (member, left, kicked)
+     * @see https://core.telegram.org/bots/api#chatmembermember
+     * @param $webhook
+     * @return void
+     */
+    private function checkMemberStatus($webhook): void
     {
         if ($webhook->my_chat_member) {
             $userId = $webhook->my_chat_member->chat->id;
@@ -63,22 +62,37 @@ class WebhookController extends Controller
                 ]);
                 $telegramUser->save();
             }else{
-                //Отправка ошибки в группу ошибок через бота ErrorsBot
-                $bot = $this->botsManager->bot('ErrorsBot');
-                $response = 'Изменился статус юзера, но его нет в базе';
-                $response .= PHP_EOL . json_encode($webhook);
-                $bot->sendMessage([
-                    'chat_id' => env('ERRORS_CHAT_ID'),
-                    'text' => $response,
-                ]);
+                $this->SendErrorMessageToChannel('Изменился статус юзера, но его нет в базе', $webhook);
             }
         }
     }
 
-    private function weatherInformation($latitude, $longitude): string
+    /**
+     * Обрабатывает сообщение из вебхука
+     * @param $message
+     * @return void
+     */
+    private function processMessage($message): void
     {
+        //Если юзет отправил свою локацию
+        if ($message->isType('location')){
+            $this->weatherInformation($message);
+        }
+    }
+
+    /**
+     * Получаем из геолокации юзера по api погоду и отправляем ему.
+     * @see https://openweathermap.org/current
+     * @param $message
+     * @return void
+     */
+    private function weatherInformation($message): void
+    {
+        $location = $message->location;
+        $chat = $message->chat;
+
         $apiToken = env('OPEN_WEATHER_MAP_TOKEN');
-        $requestUrl = "https://api.openweathermap.org/data/2.5/weather?lat={$latitude}&lon={$longitude}&units=metric&lang=ru&appid={$apiToken}";
+        $requestUrl = "https://api.openweathermap.org/data/2.5/weather?lat={$location->latitude}&lon={$location->longitude}&units=metric&lang=ru&appid={$apiToken}";
 
         $response = $this->httpClient->get($requestUrl);
 
@@ -91,6 +105,27 @@ class WebhookController extends Controller
         $weatherInfo .= PHP_EOL . 'Восход: ' . Carbon::parse($data->sys->sunrise+$data->timezone)->toTimeString();
         $weatherInfo .= PHP_EOL . 'Закат: ' . Carbon::parse($data->sys->sunset+$data->timezone)->toTimeString();
 
-        return $weatherInfo;
+        $bot = $this->botsManager->bot();
+        $bot->sendMessage([
+            'chat_id' => $chat->id,
+            'text' => $weatherInfo,
+        ]);
+    }
+
+    /**
+     * Отправка кастомных ошибок / уведомление в тг канал.
+     * @param string $title
+     * @param Update $webhook
+     * @return void
+     */
+    private function SendErrorMessageToChannel(string $title, Update $webhook)
+    {
+        $bot = $this->botsManager->bot('ErrorsBot');
+        $response = $title;
+        $response .= PHP_EOL . json_encode($webhook);
+        $bot->sendMessage([
+            'chat_id' => env('ERRORS_CHAT_ID'),
+            'text' => $response,
+        ]);
     }
 }
